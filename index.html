@@ -1,0 +1,315 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StrixNet</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <meta name="author" content="Ayaan Shakoor">
+<meta http-equiv="X-UA-Compatible" content="IE=7">
+<meta property="og:image" content="/favicon.ico">
+<meta property="og:image:type" content="image/x-icon">
+<meta property="og:image:height" content="100">
+<meta property="og:image:width" content="100">
+<meta property="og:locale" content="en_GB" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="StrixNet" />
+<meta name="description" content="A unidirectional AI/ML anomaly detection dashboard for real-time network flow monitoring .">
+<meta name="keywords" content="AI, ML, Anomaly Detection, Network Monitoring, Real-time Dashboard, Cybersecurity, Threat Intelligence, Flow Analysis, Data Visualization, Network Security">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+        body { 
+            background-color: #030303; 
+            font-family: 'JetBrains Mono', monospace;
+            background-image: 
+                linear-gradient(rgba(34, 197, 94, 0.04) 1px, transparent 1px), 
+                linear-gradient(90deg, rgba(34, 197, 94, 0.04) 1px, transparent 1px); 
+            background-size: 40px 40px; 
+            background-position: center center;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: linear-gradient(145deg, rgba(15,15,15,0.9) 0%, rgba(5,5,5,0.95) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Alert Stream Animation */
+        .alert-stream { animation: slideInLeft 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        @keyframes slideInLeft { 
+            0% { opacity: 0; transform: translateX(-20px) scale(0.98); } 
+            100% { opacity: 1; transform: translateX(0) scale(1); } 
+        }
+
+        /* Realistic Radar */
+        .radar { 
+            position: relative; overflow: hidden; border-radius: 50%; 
+            border: 1px solid rgba(34, 197, 94, 0.4); 
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.15) inset, 0 0 20px rgba(34, 197, 94, 0.1); 
+        }
+       
+        .radar::before { 
+            content: ''; position: absolute; inset: 0; 
+            background: conic-gradient(from 0deg, transparent 70%, rgba(34, 197, 94, 0.6) 100%); 
+            border-radius: 50%; animation: scan 2s linear infinite; 
+        }
+        .radar::after {
+            content: ''; position: absolute; inset: 20%;
+            border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 50%;
+        }
+        @keyframes scan { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .radar.stop-animation::before { animation: none; opacity: 0.2; }
+
+        /* Severity Glows */
+        .glow-critical { box-shadow: 0 0 20px rgba(239, 68, 68, 0.15); border-left: 4px solid #ef4444; }
+        .glow-warning { box-shadow: 0 0 20px rgba(234, 179, 8, 0.1); border-left: 4px solid #eab308; }
+        
+        /* Custom Sleek Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(34,197,94,0.4); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(34,197,94,0.8); }
+
+        .text-glow { text-shadow: 0 0 15px currentColor; }
+    </style>
+</head>
+<body class="text-green-500 h-screen flex flex-col overflow-hidden selection:bg-green-900 selection:text-white relative">
+
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-green-900/10 via-black to-black -z-10 pointer-events-none"></div>
+
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="glass-panel border-b-0 border-green-900/40 p-4 flex flex-col md:flex-row justify-between items-center z-20 shrink-0 gap-4 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+        <div class="flex items-center gap-4 w-full md:w-auto justify-center md:justify-start">
+            <div class="relative flex h-4 w-4 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" id="status-ping"></span>
+              <span class="relative inline-flex rounded-full h-4 w-4 bg-red-600 shadow-[0_0_10px_red]" id="status-indicator"></span>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-extrabold tracking-[0.15em] text-white flex items-center gap-2">
+                    Strix<span class="text-green-500 text-glow">Net</span>
+                </h1>
+                <p class="text-[9px] md:text-[10px] text-gray-400 tracking-[0.3em] uppercase mt-0.5">Network Pipeline</p>
+            </div>
+            <div>
+                <img src="/favicon.ico" alt="logo" width="8%" height="8%" class="sys">
+            </div>
+        </div>
+
+        <div class="flex items-center justify-center gap-6 md:gap-8 bg-black/50 border border-green-900/30 rounded-lg p-2.5 px-6 w-full md:w-auto shadow-inner shrink-0">
+            <div class="flex flex-col text-center">
+                <span class="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1">Target Sustained</span>
+                <span class="font-bold text-white text-sm md:text-base tracking-wider text-glow" id="live-mbps">0.00 Mbps</span>
+            </div>
+            <div class="h-8 w-px bg-green-900/50"></div>
+            <div class="flex flex-col text-center">
+                <span class="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-1">Flow Rate</span>
+                <span class="font-bold text-green-400 text-sm md:text-base tracking-wider text-glow" id="live-fps">0 Flows/s</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN DASHBOARD CONTAINER -->
+    <div class="p-3 md:p-5 grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-5 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden z-10 custom-scrollbar">
+        
+        <!-- LEFT PANEL -->
+        <div class="col-span-1 flex flex-col gap-4 h-auto lg:h-full shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
+            
+            <div class="glass-panel p-5 md:p-6 rounded-xl relative overflow-hidden group shrink-0">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-orange-500 to-transparent"></div>
+                <h2 class="text-gray-400 text-[10px] md:text-xs uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Anomalies Detected
+                </h2>
+                <div class="text-5xl md:text-6xl font-black text-white tracking-tighter text-glow mt-2" id="threat-counter">0</div>
+            </div>
+            
+            <div class="glass-panel p-5 md:p-6 rounded-xl flex flex-col items-center justify-center py-8 relative shrink-0">
+                <div class="absolute top-2 right-3 flex gap-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500/30"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500/30"></div>
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                </div>
+                <div class="w-24 h-24 md:w-32 md:h-32 radar flex items-center justify-center mb-6 opacity-40 transition-all duration-500 stop-animation" id="radar-visual">
+                    <div class="w-12 h-12 md:w-16 md:h-16 rounded-full border border-green-900/50 absolute"></div>
+                    <div class="w-full h-px bg-green-900/60 absolute"></div>
+                    <div class="h-full w-px bg-green-900/60 absolute"></div>
+                </div>
+                <div class="text-[9px] md:text-[10px] text-gray-500 tracking-[0.2em] font-bold text-center bg-black/40 px-3 py-1 rounded border border-gray-800" id="radar-status">INGEST PAUSED</div>
+            </div>
+
+            <div class="glass-panel p-5 md:p-6 rounded-xl flex-1 flex flex-col shrink-0 min-h-[250px]">
+                <h2 class="text-gray-400 text-[10px] md:text-xs uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Pipeline Constraints
+                </h2>
+                <div class="space-y-3 mt-2">
+                    <div class="flex justify-between items-center bg-black/40 p-2 rounded border border-gray-800/50 hover:border-green-900/50 transition">
+                        <span class="text-gray-400 text-[10px] md:text-xs tracking-wider">Ingest Path</span>
+                        <span class="text-green-400 bg-green-900/20 px-2 py-1 rounded text-[9px] md:text-[10px] font-bold tracking-widest border border-green-900/30">RX-ONLY</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-black/40 p-2 rounded border border-gray-800/50 hover:border-red-900/50 transition">
+                        <span class="text-gray-400 text-[10px] md:text-xs tracking-wider">Return Path</span>
+                        <span class="text-red-400 bg-red-900/20 px-2 py-1 rounded text-[9px] md:text-[10px] font-bold tracking-widest border border-red-900/30">TX DISABLED</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-black/40 p-2 rounded border border-gray-800/50 hover:border-yellow-900/50 transition">
+                        <span class="text-gray-400 text-[10px] md:text-xs tracking-wider">Payload Decrypt</span>
+                        <span class="text-yellow-400 bg-yellow-900/20 px-2 py-1 rounded text-[9px] md:text-[10px] font-bold tracking-widest border border-yellow-900/30">METADATA ONLY</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL (Live Stream) -->
+        <div class="col-span-1 lg:col-span-3 glass-panel rounded-xl flex flex-col min-h-[600px] lg:min-h-0 lg:h-full relative overflow-hidden">
+            
+            <div class="p-4 md:p-5 bg-black/40 border-b border-green-900/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
+                <h2 class="text-white font-bold tracking-widest text-xs md:text-sm flex items-center gap-2 text-glow">
+                    <svg class="w-4 h-4 text-green-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    BOUNDED LATENCY FEED
+                </h2>
+                <div class="flex flex-wrap gap-3 w-full sm:w-auto">
+                    <button id="stream-btn" onclick="toggleIngest()" class="flex-1 sm:flex-none text-[10px] md:text-xs font-bold tracking-widest bg-green-500/10 text-green-400 border border-green-500/50 px-5 py-2 rounded shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-500/20 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)] transition-all whitespace-nowrap">START LIVE INGEST</button>
+                    <button onclick="clearLogs()" class="flex-1 sm:flex-none text-[10px] md:text-xs font-bold tracking-widest bg-black/50 border border-gray-700 px-5 py-2 rounded hover:bg-gray-800 text-gray-300 hover:text-white transition-all whitespace-nowrap">CLEAR ALERTS</button>
+                </div>
+            </div>
+            
+            <div class="flex-1 min-h-0 overflow-x-auto custom-scrollbar flex flex-col bg-black/20">
+                <div class="min-w-[850px] flex flex-col h-full flex-1">
+                    
+                    <div class="shrink-0 grid grid-cols-12 gap-4 px-5 py-3 text-[10px] md:text-xs text-green-500/80 uppercase tracking-widest font-black bg-[#080808] border-b border-green-900/40">
+                        <div class="col-span-2">Timestamp (IST)</div>
+                        <div class="col-span-2">Flow Source</div>
+                        <div class="col-span-3">Threat Class</div>
+                        <div class="col-span-1 text-center">Conf.</div>
+                        <div class="col-span-4 pl-2">AI Evidence Matrix</div>
+                    </div>
+
+                    <div id="live-alerts" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-2.5 pb-6">
+                        <div class="flex h-full items-center justify-center text-gray-600" id="waiting-msg">
+                            <div class="text-center bg-black/40 border border-gray-800 p-6 rounded-lg backdrop-blur-sm shadow-xl">
+                                <svg class="w-8 h-8 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span class="tracking-[0.2em] text-[10px] md:text-xs uppercase font-bold" id="waiting-text">System Paused. Awaiting Ingest Command.</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let threatCount = 0;
+        let isIngesting = false;
+        
+        let socket;
+        try {
+            socket = io();
+            socket.on('connect', () => {
+                $('#status-indicator').removeClass('bg-red-600 shadow-[0_0_10px_red]').addClass('bg-green-500 shadow-[0_0_10px_green]');
+                $('#status-ping').removeClass('bg-red-500').addClass('bg-green-500');
+            });
+            socket.on('disconnect', () => {
+                $('#status-indicator').removeClass('bg-green-500 shadow-[0_0_10px_green]').addClass('bg-red-600 shadow-[0_0_10px_red]');
+                $('#status-ping').removeClass('bg-green-500').addClass('bg-red-500');
+            });
+            
+            socket.on('stats_update', (data) => {
+                if (!isIngesting) return;
+                $('#live-mbps').text(data.mbps + ' Mbps');
+                $('#live-fps').text(data.fps + ' Flows/s');
+            });
+
+            socket.on('new_threat_alert', (alertData) => {
+                if (!isIngesting) return; 
+                $('#waiting-msg').hide();
+                threatCount++;
+                $('#threat-counter').text(threatCount);
+
+                // EXACT REQUIRED TIME FORMAT: DD-MM-YYYY HH:mm:ss
+                let timeString = new Date().toLocaleString('en-GB', {
+                    timeZone: 'Asia/Kolkata',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/\//g, '-').replace(',', '');
+                
+                let isCritical = alertData.confidence_score >= 95;
+                let bgClass = isCritical ? 'bg-red-950/30 border-red-900/50 hover:bg-red-900/40' : 'bg-yellow-950/20 border-yellow-900/50 hover:bg-yellow-900/30';
+                let glowClass = isCritical ? 'glow-critical' : 'glow-warning';
+                let scoreColor = isCritical ? 'text-red-400' : 'text-yellow-400';
+
+                let row = `
+                    <div class="grid grid-cols-12 gap-4 px-4 py-3.5 mx-2 rounded-lg border backdrop-blur-sm ${bgClass} ${glowClass} alert-stream items-center transition-colors duration-200">
+                        <div class="col-span-2 text-[10px] md:text-[11px] text-gray-400 tracking-wider font-semibold">${timeString}</div>
+                        <div class="col-span-2 text-[10px] md:text-[11px] text-blue-400 font-bold tracking-widest">${alertData.flow_identifier.replace('Source: ', '')}</div>
+                        <div class="col-span-3 text-[10px] md:text-[11px] font-black tracking-[0.1em] text-white uppercase">${alertData.threat_class}</div>
+                        <div class="col-span-1 text-[11px] md:text-xs font-black text-center ${scoreColor} text-glow">${alertData.confidence_score}%</div>
+                        <div class="col-span-4 text-[9px] md:text-[10px] text-gray-300 font-semibold tracking-wide pl-4 border-l border-white/10 leading-relaxed">${alertData.supporting_evidence}</div>
+                    </div>
+                `;
+                $('#live-alerts').prepend(row);
+                
+                if ($('#live-alerts').children('.alert-stream').length > 50) {
+                    $('#live-alerts').children('.alert-stream').last().remove();
+                }
+            });
+        } catch(e) {
+            console.log("Socket.io not loaded or server offline.");
+        }
+
+        function toggleIngest() {
+            isIngesting = !isIngesting;
+            if (isIngesting) {
+                $('#radar-visual').removeClass('stop-animation opacity-40').addClass('opacity-100');
+                $('#stream-btn').text('HALT FEED')
+                    .removeClass('bg-green-500/10 text-green-400 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-500/20 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]')
+                    .addClass('bg-red-500/10 text-red-400 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]');
+                $('#radar-status').text('INGESTING STREAM...').addClass('text-green-400 animate-pulse').removeClass('text-gray-500');
+                $('#waiting-text').text('Listening for AI/ML pipeline anomalies...');
+                $('#waiting-msg svg').addClass('animate-bounce text-green-500').removeClass('opacity-50');
+            } else {
+                $('#radar-visual').addClass('stop-animation opacity-40').removeClass('opacity-100');
+                $('#stream-btn').text('START LIVE INGEST')
+                    .removeClass('bg-red-500/10 text-red-400 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20 hover:shadow-[0_0_20px_rgba(239,68,68,0.4)]')
+                    .addClass('bg-green-500/10 text-green-400 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-500/20 hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]');
+                $('#radar-status').text('INGEST PAUSED').removeClass('text-green-400 animate-pulse').addClass('text-gray-500');
+                $('#waiting-text').text('System Paused. Awaiting Ingest Command.');
+                $('#waiting-msg svg').removeClass('animate-bounce text-green-500').addClass('opacity-50');
+                
+                $('#live-mbps').text('0.00 Mbps');
+                $('#live-fps').text('0 Flows/s');
+            }
+        }
+
+        function clearLogs() {
+            $('#live-alerts .alert-stream').remove();
+            $('#waiting-msg').show();
+            $('#threat-counter').text('0');
+            threatCount = 0;
+        }
+    </script>
+</body>
+<style>
+    @media (max-width: 768px) {
+     .sys{
+        width: 40%;
+        justify-self: end;
+        margin-right: 10%;
+    }
+    }
+    
+</style>
+</html>
