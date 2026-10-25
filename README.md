@@ -1,14 +1,14 @@
-ML-Driven Network Intrusion Detection System (NIDS) |Built for SIH 2026|
+<h1>ML-Driven Network Intrusion Detection System (NIDS) </h1> |Built for SIH 2026| <br/>
 
 An intelligent, real-time Network Intrusion Detection System (NIDS) engineered to identify, classify, and alert on multi-vector cyber threats in high-throughput network environments.
 
 By combining Scapy-based packet ingestion, RandomForest machine learning, JA3/JA4 cryptographic fingerprinting, and live DGAArchive Threat Intelligence, this system provides full-spectrum visibility into stealthy attack vectors while maintaining zero false positives on benign enterprise traffic.
 
-📸 Dashboard Overview
+<h2> 📸Dashboard Overview</h2>
 
 The platform includes a high-performance Node.js Command Center Dashboard that streams real-time telemetry, live bandwidth statistics (Mbps / FPS), and high-confidence security alerts (Confidence >= 80%).
 
-🎯 Target Threat Vectors Covered
+<h2>🎯 Target Threat Vectors Covered</h2>
 
 This NIDS is specifically tuned to detect 6 primary threat vectors:
 
@@ -28,6 +28,6 @@ Encrypted Session Malware: Raw TLS payload inspection using JA3 and JA4 (QUIC) c
 
 Data Exfiltration: Large, unidirectional outbound data transfers crossing internal-to-external network boundaries.
 
-✨ Key Features & Technical Highlights
+<h2>✨ Key Features & Technical Highlights</h2>
 
 Deep Inspection DGA API Engine: Integrates directly with the Fraunhofer FKIE DGAArchive API. Features a recursive JSON parser (has_family()) to ensure benign domains returning status 200 (e.g., google.com, `ubuntu.
